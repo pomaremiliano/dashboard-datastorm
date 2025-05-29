@@ -5,16 +5,19 @@ from dash import Dash, dash_table, html, dcc, Output, Input, callback_context
 df1 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Rutas")
 df2 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Rutas_Unidad")
 df3 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Gastos por Unidad")
+df4 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="CPK_Ruta")
 
 app = Dash(__name__)
 
 app.layout = html.Div([
     html.H2("Top 10 Rutas y Rutas por Unidad"),
+    html.H3 ("CPK calculado contemplando Costo de combustible y Costo de Mantenimiento entre Kilometros totales recorridos por cada unidad"),
     html.P("Seleccione una opción para ver la tabla correspondiente:"),
     html.Div([
         html.Button("Rutas", id="btn-rutas", n_clicks=0),
         html.Button("Rutas Unidad", id="btn-rutas-unidad", n_clicks=0),
         html.Button("Gastos por Unidad", id="btn-gastos-unidad", n_clicks=0),
+        html.Button("CPK por Ruta", id="btn-cpk-ruta", n_clicks=0),
     ]),
     html.Div(id="tabla-container")
 ])
@@ -24,8 +27,9 @@ app.layout = html.Div([
     Input("btn-rutas", "n_clicks"),
     Input("btn-rutas-unidad", "n_clicks"),
     Input("btn-gastos-unidad", "n_clicks"),
+    Input("btn-cpk-ruta", "n_clicks"),  
 )
-def mostrar_tabla(n_rutas, n_rutas_unidad, n_gastos_unidad):
+def mostrar_tabla(n_rutas, n_rutas_unidad, n_gastos_unidad, n_cpk_ruta):
     ctx = callback_context
     if not ctx.triggered:
         df = df1  # default
@@ -35,8 +39,10 @@ def mostrar_tabla(n_rutas, n_rutas_unidad, n_gastos_unidad):
             df = df1
         elif btn_id == "btn-rutas-unidad":
             df = df2
-        else:
-            df = df3  # fallback
+        elif btn_id == "btn-gastos-unidad":
+            df = df3
+        elif btn_id == "btn-cpk-ruta":
+            df = df4
 
     return dash_table.DataTable(
         data=df.to_dict('records'),
