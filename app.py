@@ -1,58 +1,73 @@
 import pandas as pd
-from dash import Dash, dash_table, html, dcc, Output, Input, callback_context
+from dash import Dash, dash_table, html, dcc, Output, Input, State, callback_context
 
 # Leer las dos hojas
-df1 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Rutas")
-df2 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Rutas_Unidad")
-df3 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Gastos por Unidad")
-df4 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="CPK_Ruta")
-df5 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Top 10 Rutas Mas Eficientes")
-df6 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Top 10 Rutas Menos Eficientes")
+df1 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Top 10 Rutas Mas Eficientes")
+df2 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Top 10 Rutas Menos Eficientes")
+df3 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Top 10 Unidades Más Eficientes")
+df4 = pd.read_excel("./data/Rutas_Resumen.xlsx", sheet_name="Top 10 Unidades Menos Eficientes")
 
 app = Dash(__name__)
 
+button_ids = [
+    "btn-top10-eficientes",
+    "btn-top10-menos-eficientes",
+    "btn-top10-unidades-eficientes",
+    "btn-top10-unidades-menos-eficientes"
+]
+
 app.layout = html.Div([
-    html.H2("Top 10 Rutas y Rutas por Unidad"),
-    html.H3 ("CPK calculado contemplando Costo de combustible y Costo de Mantenimiento entre Kilometros totales recorridos por cada unidad"),
+    dcc.Store(id='active-button', data='btn-top10-eficientes'),
+    html.H2("Top 10 Rutas Unidades Más y Menos Eficientes"),
+    html.Br(),
+    html.H3("CPK calculado contemplando Costo de combustible y Costo de Mantenimiento entre Kilometros totales recorridos por cada unidad"),
     html.P("Seleccione una opción para ver la tabla correspondiente:"),
     html.Div([
-        html.Button("Rutas", id="btn-rutas", n_clicks=0),
-        html.Button("Rutas Unidad", id="btn-rutas-unidad", n_clicks=0),
-        html.Button("Gastos por Unidad", id="btn-gastos-unidad", n_clicks=0),
-        html.Button("CPK por Ruta", id="btn-cpk-ruta", n_clicks=0),
         html.Button("Top 10 Rutas Más Eficientes", id="btn-top10-eficientes", n_clicks=0),
         html.Button("Top 10 Rutas Menos Eficientes", id="btn-top10-menos-eficientes", n_clicks=0),
-    ]),
+        html.Button("Top 10 Unidades Más Eficientes", id="btn-top10-unidades-eficientes", n_clicks=0),
+        html.Button("Top 10 Unidades Menos Eficientes", id="btn-top10-unidades-menos-eficientes", n_clicks=0),
+    ], id="button-group"),
     html.Div(id="tabla-container")
 ])
 
 @app.callback(
-    Output("tabla-container", "children"),
-    Input("btn-rutas", "n_clicks"),
-    Input("btn-rutas-unidad", "n_clicks"),
-    Input("btn-gastos-unidad", "n_clicks"),
-    Input("btn-cpk-ruta", "n_clicks"),
-    Input("btn-top10-eficientes", "n_clicks"),
-    Input("btn-top10-menos-eficientes", "n_clicks"),
+    Output('active-button', 'data'),
+    [Input(btn_id, 'n_clicks') for btn_id in button_ids],
+    prevent_initial_call=True
 )
-def mostrar_tabla(n_rutas, n_rutas_unidad, n_gastos_unidad, n_cpk_ruta, n_top10_eficientes, n_top10_menos_eficientes):
+def update_active_button(*btn_clicks):
     ctx = callback_context
     if not ctx.triggered:
-        df = df1  # default
+        return dash.no_update
+    btn_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    return btn_id
+
+@app.callback(
+    [Output(btn_id, 'style') for btn_id in button_ids],
+    Input('active-button', 'data')
+)
+def highlight_active_button(active_btn):
+    highlight = {'backgroundColor': "#6aee49", 'fontWeight': 'bold'}
+    normal = {}
+    return [highlight if btn_id == active_btn else normal for btn_id in button_ids]
+
+@app.callback(
+    Output("tabla-container", "children"),
+    [Input(btn_id, 'n_clicks') for btn_id in button_ids],
+    State('active-button', 'data')
+)
+def mostrar_tabla(n_clicks_eficientes, n_clicks_menos_eficientes, n_clicks_unidades_eficientes, n_clicks_unidades_menos_eficientes, active_btn):
+    if active_btn == "btn-top10-eficientes":
+        df = df1
+    elif active_btn == "btn-top10-menos-eficientes":
+        df = df2
+    elif active_btn == "btn-top10-unidades-eficientes":
+        df = df3
+    elif active_btn == "btn-top10-unidades-menos-eficientes":
+        df = df4
     else:
-        btn_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        if btn_id == "btn-rutas":
-            df = df1
-        elif btn_id == "btn-rutas-unidad":
-            df = df2
-        elif btn_id == "btn-gastos-unidad":
-            df = df3
-        elif btn_id == "btn-cpk-ruta":
-            df = df4
-        elif btn_id == "btn-top10-eficientes":
-            df = df5
-        elif btn_id == "btn-top10-menos-eficientes":
-            df = df6
+        df = df1  # default
 
     return dash_table.DataTable(
         data=df.to_dict('records'),
@@ -62,7 +77,8 @@ def mostrar_tabla(n_rutas, n_rutas_unidad, n_gastos_unidad, n_cpk_ruta, n_top10_
         style_cell={'textAlign': 'left'},
         style_header={
             'backgroundColor': 'lightgrey',
-            'fontWeight': 'bold'
+            'fontWeight': 'bold',
+            'textAlign': 'center',
         },
     )
 
