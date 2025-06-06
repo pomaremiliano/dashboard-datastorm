@@ -10,14 +10,15 @@ cd dashboard-datastorm
 ```
 2. Instalar las dependencias
 ```bash
-pip install dash
+pip install streamlit
 pip install plotly
 pip install pandas
+pip install altair
 ```
 3. Correr el servidor
 - abre la terminal y ejecuta el siguiente comando:
 ```bash
-python app.py
+streamlit run app.py
 ```
-4. Abrir el navegador
-5. En la barra de direcciones, escribe `http://localhost:8050`
+4. Streamlit abrirá una pestaña en tu navegador con el dashboard.
+5. Si no se abre automáticamente, puedes acceder a través de la URL: `http://localhost:8501`

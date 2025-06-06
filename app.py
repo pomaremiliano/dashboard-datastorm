@@ -27,7 +27,6 @@ st.markdown("### CPK Promedio General")
 st.metric("CPK Promedio", f"{df_cluster['CPK'].mean():.2f}")
 
 
-
 ef_stats = (
     df_gastos.groupby("Unidad")["Eficiencia (km/l)"]
     .agg(Mayor="max", Promedio="mean", Menor="min")
@@ -35,18 +34,36 @@ ef_stats = (
     .reset_index()
 )
 
-ef_stats_long = ef_stats.melt(id_vars="Unidad", value_vars=["Mayor", "Promedio", "Menor"],
-                              var_name="Tipo", value_name="Eficiencia")
+ef_stats_long = ef_stats.melt(
+    id_vars="Unidad",
+    value_vars=["Mayor", "Promedio", "Menor"],
+    var_name="Tipo",
+    value_name="Eficiencia",
+)
 
 # Create a grouped bar chart using Altair
-chart = alt.Chart(ef_stats_long).mark_bar().encode(
-    x=alt.X('Tipo', axis=None),  # Use Tipo for the inner grouping on the x-axis, hide axis labels
-    y='Eficiencia',
-    color=alt.Color('Tipo', scale=alt.Scale(domain=['Mayor', 'Promedio', 'Menor'],
-                                            range=['#7EA6E0', '#9D9C9C', "#000000"])),  # Colores para cada tipo
-    tooltip=['Unidad', 'Tipo', 'Eficiencia']
-).facet(
-    column=alt.Column('Unidad', header=alt.Header(titleOrient="bottom", labelOrient="bottom"))
+chart = (
+    alt.Chart(ef_stats_long)
+    .mark_bar()
+    .encode(
+        x=alt.X(
+            "Tipo", axis=None
+        ),  # Use Tipo for the inner grouping on the x-axis, hide axis labels
+        y="Eficiencia",
+        color=alt.Color(
+            "Tipo",
+            scale=alt.Scale(
+                domain=["Mayor", "Promedio", "Menor"],
+                range=["#7EA6E0", "#9D9C9C", "#000000"],
+            ),
+        ),  # Colores para cada tipo
+        tooltip=["Unidad", "Tipo", "Eficiencia"],
+    )
+    .facet(
+        column=alt.Column(
+            "Unidad", header=alt.Header(titleOrient="bottom", labelOrient="bottom")
+        )
+    )
 )
 
 # Show the chart
@@ -66,15 +83,27 @@ fig_bar = px.bar(
 st.plotly_chart(fig_bar, use_container_width=True)
 
 # --- Filtros limitados solo a top/bottom 10 ---
-st.markdown("### Tabla Interactiva (Top y Bottom 10 Unidades)")
+st.markdown("### Tabla de Unidades")
 unidad_opciones = sorted(subset_df["Unidad"].unique())
 unidad_sel = st.selectbox("Selecciona una unidad", ["Todas"] + unidad_opciones)
-orden = st.radio("Ordenar por CPK", ["Ascendente", "Descendente"], horizontal=True)
 
-df_tabla = subset_df.copy()
+# Agrupa por Unidad y calcula métricas agregadas
+df_tabla = (
+    subset_df.groupby("Unidad")
+    .agg(
+        CPK=("CPK", "mean"),
+        Kms_Totales=("Kms Totales", "sum"),
+        Litros=("Litros", "sum"),
+        Eficiencia_km_l=("Eficiencia (km/l)", "mean"),
+        Gasto_Combustible=("Gasto Combustible", "sum"),
+        Gasto_Mantenimiento=("Gasto Mantenimiento", "sum"),
+    )
+    .reset_index()
+)
+
 if unidad_sel != "Todas":
     df_tabla = df_tabla[df_tabla["Unidad"] == unidad_sel]
-df_tabla = df_tabla.sort_values(by="CPK", ascending=(orden == "Ascendente")).reset_index(drop=True)
+df_tabla = df_tabla.sort_values(by="CPK", ascending=False).reset_index(drop=True)
 df_tabla.insert(0, "#", df_tabla.index + 1)  # Agrega columna de conteo
 
 st.dataframe(
@@ -83,17 +112,46 @@ st.dataframe(
             "#",
             "Unidad",
             "CPK",
-            "Kms Totales",
+            "Kms_Totales",
             "Litros",
-            "Eficiencia (km/l)",
-            "Gasto Combustible",
-            "Gasto Mantenimiento",
+            "Eficiencia_km_l",
+            "Gasto_Combustible",
+            "Gasto_Mantenimiento",
         ]
     ],
     use_container_width=True,
+    hide_index=True,
 )
 
+# --- Tabla top y bottom 10 rutas ---
+st.markdown("### Tabla de Rutas")
+ruta_opciones = sorted(df_rutas["Ruta"].unique())
+ruta_sel = st.selectbox("Selecciona una ruta", ["Todas"] + ruta_opciones)
 
+df_rutas_tabla = (
+    df_rutas.groupby("Ruta")
+    .agg(
+        CPK_Ruta=("CPK_Ruta", "mean"),
+        Cantidad_de_viajes=("Cantidad de viajes", "sum"),
+        Litros=("Litros", "sum"),
+        Kms_Totales=("kmstotales", "sum"),
+    )
+    .reset_index()
+)
+if ruta_sel != "Todas":
+    df_rutas_tabla = df_rutas_tabla[df_rutas_tabla["Ruta"] == ruta_sel]
+df_rutas_tabla.insert(0, "#", df_rutas_tabla.index + 1)  # Agrega columna de conteo
+# Verifica que las columnas existan antes de mostrar
+cols_to_show = [
+    col
+    for col in ["#", "Ruta", "CPK_Ruta", "Cantidad de viajes", "Litros", "Kms_Totales"]
+    if col in df_rutas_tabla.columns
+]
+st.dataframe(
+    df_rutas_tabla[cols_to_show],
+    use_container_width=True,
+    hide_index=True,
+)
 # --- Top y Bottom 10 rutas por CPK ---
 
 st.markdown("### Top y Bottom 10 Rutas por CPK")
