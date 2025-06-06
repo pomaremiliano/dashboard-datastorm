@@ -1,17 +1,18 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import altair as alt
 
 # --- Cargar datos completos solo una vez ---
 df_cluster = pd.read_csv("data/df_maestra_cluster.csv")
-df_bottomrutas = pd.read_csv("data/bottom10_rutas_cpk.csv")
-df_toprutas = pd.read_csv("data/top10_rutas_cpk.csv")
+df_rutas = pd.read_csv("data/tabla_rutas_unidad.csv")
+df_gastos = pd.read_csv("data/df_gastos_unidad.csv")
 
-# --- Cargar sólo top y bottom 10 unidades en CPK ---
-df_unidades = pd.read_csv("data/df_gastos_unidad.csv")
 
-top10_cpk = df_unidades.nlargest(10, "CPK").copy()
-bottom10_cpk = df_unidades.nsmallest(10, "CPK").copy()
+# --- Filtrar datos para top y bottom 10 rutas ---
+
+top10_cpk = df_gastos.copy()
+bottom10_cpk = df_gastos.copy()
 subset_df = pd.concat([top10_cpk, bottom10_cpk])
 
 # --- Página general ---
@@ -21,45 +22,36 @@ st.subheader("DataStorm")
 
 # --- Métricas generales ---
 st.markdown("### CPK Promedio General")
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("CPK Promedio (Cluster)", f"{df_cluster['CPK'].mean():.2f}")
-with col2:
-    st.metric("CPK Promedio (Top/Bottom 10 Unidades)", f"{subset_df['CPK'].mean():.2f}")
+
+
+st.metric("CPK Promedio", f"{df_cluster['CPK'].mean():.2f}")
+
 
 
 ef_stats = (
-    df_unidades.groupby("Unidad")["Eficiencia (km/l)"]
+    df_gastos.groupby("Unidad")["Eficiencia (km/l)"]
     .agg(Mayor="max", Promedio="mean", Menor="min")
     .nlargest(10, "Promedio")  # Top 10 con mejor eficiencia promedio
     .reset_index()
 )
 
-df_long = ef_stats.melt(id_vars="Unidad", var_name="Tipo", value_name="Eficiencia")
+ef_stats_long = ef_stats.melt(id_vars="Unidad", value_vars=["Mayor", "Promedio", "Menor"],
+                              var_name="Tipo", value_name="Eficiencia")
 
-fig = px.bar(
-    df_long,
-    x="Unidad",
-    y="Eficiencia",
-    color="Tipo",
-    barmode="group",
-    color_discrete_map={
-        "Mayor": "#6CA0DC",  # Azul
-        "Promedio": "#888888",  # Gris
-        "Menor": "#EEEEEE",  # Blanco/ligero
-    },
-    title="Top 10 Unidades Más Eficientes (Mayor, Promedio y Menor)",
+# Create a grouped bar chart using Altair
+chart = alt.Chart(ef_stats_long).mark_bar().encode(
+    x=alt.X('Tipo', axis=None),  # Use Tipo for the inner grouping on the x-axis, hide axis labels
+    y='Eficiencia',
+    color=alt.Color('Tipo', scale=alt.Scale(domain=['Mayor', 'Promedio', 'Menor'],
+                                            range=['#7EA6E0', '#9D9C9C', "#000000"])),  # Colores para cada tipo
+    tooltip=['Unidad', 'Tipo', 'Eficiencia']
+).facet(
+    column=alt.Column('Unidad', header=alt.Header(titleOrient="bottom", labelOrient="bottom"))
 )
 
-fig.update_layout(
-    plot_bgcolor="black",
-    paper_bgcolor="black",
-    font_color="white",
-    title_font_size=18,
-    legend_title_text="Eficiencia",
-)
-
-st.plotly_chart(fig, use_container_width=True)
+# Show the chart
+st.markdown("### Eficiencia por Unidad (Top 10)")
+altair_chart = st.altair_chart(chart, use_container_width=True)
 
 # --- Gráfico de barras para top/bottom 10 ---
 st.markdown("### Comparativa de Top y Bottom 10 Unidades")
@@ -82,11 +74,13 @@ orden = st.radio("Ordenar por CPK", ["Ascendente", "Descendente"], horizontal=Tr
 df_tabla = subset_df.copy()
 if unidad_sel != "Todas":
     df_tabla = df_tabla[df_tabla["Unidad"] == unidad_sel]
-df_tabla = df_tabla.sort_values(by="CPK", ascending=(orden == "Ascendente"))
+df_tabla = df_tabla.sort_values(by="CPK", ascending=(orden == "Ascendente")).reset_index(drop=True)
+df_tabla.insert(0, "#", df_tabla.index + 1)  # Agrega columna de conteo
 
 st.dataframe(
     df_tabla[
         [
+            "#",
             "Unidad",
             "CPK",
             "Kms Totales",
@@ -99,30 +93,27 @@ st.dataframe(
     use_container_width=True,
 )
 
-"""# --- Gráfico de CPK mensual en mantenimiento ---
-if "Mes" in df_mantto.columns and "CPK" in df_mantto.columns:
-    st.markdown("### CPK de Mantenimiento por Mes")
-    df_cpk_mes = df_mantto[["Mes", "CPK"]].dropna()
-    cpk_prom_mes = df_cpk_mes.groupby("Mes")["CPK"].mean().reset_index()
-    fig_mantto = px.bar(
-        cpk_prom_mes, x="Mes", y="CPK", title="CPK Mensual en Mantenimiento"
-    )
-    st.plotly_chart(fig_mantto, use_container_width=True)
-"""
 
 # --- Top y Bottom 10 rutas por CPK ---
 
 st.markdown("### Top y Bottom 10 Rutas por CPK")
-top10_rutas = df_toprutas.groupby("Ruta")["CPK"].mean().nlargest(10).reset_index()
-bottom10_rutas = df_bottomrutas.groupby("Ruta")["CPK"].mean().nsmallest(10).reset_index()
+# Filtrar solo rutas cuyo CPK_Ruta es mayor que 0
+df_rutas_filtrado = df_rutas[df_rutas["CPK_Ruta"] > 0]
+
+df_top10_rutas = (
+    df_rutas_filtrado.groupby("Ruta")["CPK_Ruta"].mean().nlargest(10).reset_index()
+)
+df_bottom10_rutas = (
+    df_rutas_filtrado.groupby("Ruta")["CPK_Ruta"].mean().nsmallest(10).reset_index()
+)
 rutas_cpk = pd.concat(
-    [top10_rutas.assign(Tipo="Top 10"), bottom10_rutas.assign(Tipo="Bottom 10")]
+    [df_top10_rutas.assign(Tipo="Top 10"), df_bottom10_rutas.assign(Tipo="Bottom 10")]
 )
 
 fig_rutas = px.bar(
     rutas_cpk,
     x="Ruta",
-    y="CPK",
+    y="CPK_Ruta",
     color="Tipo",
     barmode="group",
     title="Top y Bottom 10 Rutas por CPK",
