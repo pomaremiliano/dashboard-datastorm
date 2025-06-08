@@ -1,5 +1,5 @@
 # Dashboard DataStorm 
-    - Dash y Plotly
+
 
 ## Para correr el proyecto
 1. Clonar el repositorio
