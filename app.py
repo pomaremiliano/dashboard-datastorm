@@ -4,6 +4,7 @@ import plotly.express as px
 import altair as alt
 
 # --- Cargar datos completos solo una vez ---
+df_eficiencia_completa = pd.read_csv("data/eficiencia_completa_por_tracto.csv")
 df_cluster = pd.read_csv("data/df_maestra_cluster.csv")
 df_rutas = pd.read_csv("data/tabla_rutas_unidad.csv")
 df_gastos = pd.read_csv("data/df_gastos_unidad.csv")
@@ -27,48 +28,57 @@ st.markdown("### CPK Promedio General")
 st.metric("CPK Promedio", f"{df_cluster['CPK'].mean():.2f}")
 
 
-ef_stats = (
-    df_gastos.groupby("Unidad")["Eficiencia (km/l)"]
-    .agg(Mayor="max", Promedio="mean", Menor="min")
-    .nlargest(10, "Promedio")  # Top 10 con mejor eficiencia promedio
-    .reset_index()
-)
+# Renombrar columnas y limpiar datos
+df_eficiencia = df_eficiencia_completa.rename(columns={
+    "Tracto": "Unidad",
+    "Eficiencia Min (km/l)": "Menor",
+    "Eficiencia Media (km/l)": "Promedio",
+    "Eficiencia Max (km/l)": "Mayor"
+})
 
-ef_stats_long = ef_stats.melt(
+# Seleccionar top 10 por eficiencia máxima
+top10 = df_eficiencia.nlargest(10, "Mayor").copy()
+
+# Convertir a formato largo
+ef_stats_long = top10.melt(
     id_vars="Unidad",
     value_vars=["Mayor", "Promedio", "Menor"],
     var_name="Tipo",
-    value_name="Eficiencia",
+    value_name="Eficiencia"
 )
 
-# Create a grouped bar chart using Altair
-chart = (
-    alt.Chart(ef_stats_long)
-    .mark_bar()
-    .encode(
-        x=alt.X(
-            "Tipo", axis=None
-        ),  # Use Tipo for the inner grouping on the x-axis, hide axis labels
-        y="Eficiencia",
-        color=alt.Color(
-            "Tipo",
-            scale=alt.Scale(
-                domain=["Mayor", "Promedio", "Menor"],
-                range=["#7EA6E0", "#9D9C9C", "#000000"],
-            ),
-        ),  # Colores para cada tipo
-        tooltip=["Unidad", "Tipo", "Eficiencia"],
-    )
-    .facet(
-        column=alt.Column(
-            "Unidad", header=alt.Header(titleOrient="bottom", labelOrient="bottom")
-        )
-    )
+# Limpiar y asegurar tipos válidos
+ef_stats_long["Eficiencia"] = pd.to_numeric(ef_stats_long["Eficiencia"], errors="coerce")
+ef_stats_long = ef_stats_long[ef_stats_long["Eficiencia"] > 0]
+
+# Crear gráfica con Plotly
+fig = px.bar(
+    ef_stats_long,
+    x="Tipo",
+    y="Eficiencia",
+    color="Tipo",
+    facet_col="Unidad",
+    barmode="group",
+    category_orders={"Tipo": ["Menor", "Promedio", "Mayor"]},
+    color_discrete_map={
+        "Mayor": "#7EA6E0",
+        "Promedio": "#9D9C9C",
+        "Menor": "#000000"
+    },
+    title="Eficiencia de combustible por Unidad (km/L)",
+    labels={"Eficiencia": "km por litro"}
 )
 
-# Show the chart
-st.markdown("### Eficiencia por Unidad (Top 10)")
-altair_chart = st.altair_chart(chart, use_container_width=True)
+# Ajustar el layout para mejor legibilidad
+fig.update_layout(
+    height=500,
+    
+    margin=dict(t=50, l=10, r=10, b=50),
+    showlegend=(len(ef_stats_long["Unidad"].unique()) <= 10),
+)
+
+# Mostrar en Streamlit
+st.plotly_chart(fig, use_container_width=True)
 
 # --- Gráfico de barras para top/bottom 10 ---
 st.markdown("### Comparativa de Top y Bottom 10 Unidades")
