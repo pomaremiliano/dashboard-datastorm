@@ -16,7 +16,8 @@ df_gastos = pd.read_csv("data/df_gastos_unidad.csv")
 df_unidadesxruta = pd.read_csv("data/tabla_unidades_por_ruta.csv")
 df_viajesunidadruta = pd.read_csv("data/viajes_unidad_ruta.csv")
 df_toprutasmes = pd.read_csv("data/top_rutas_mes.csv")
-
+top10rutaseficientes = pd.read_csv("data/top10_rutas_eficientes.csv")
+top10rutasmeneeficientes = pd.read_csv("data/top10_rutas_menos_eficientes.csv")
 # --- Paleta de colores personalizada ---
 PALETTE = ["#f4bc34", "#04345c", "#c0c04c", "#407c4c", "#44344c"]
 COLOR_MAP = {
@@ -287,3 +288,42 @@ st.plotly_chart(fig_hist, use_container_width=True)
 
 st.subheader("Unidades por Ruta")
 st.dataframe(df_unidadesxruta, use_container_width=True)
+
+st.dataframe(top10rutaseficientes, use_container_width=True)
+st.dataframe(top10rutasmeneeficientes, use_container_width=True)
+
+
+
+st.markdown("## Calculadora de CPK")
+
+# Supón que tienes estas columnas en df_gastos o df_cluster:
+# 'Proyecto', 'Tipo de Ruta', 'Tipo de Unidad', 'CPK'
+
+# Selección de filtros
+proyectos = sorted(df_cluster["Proyecto"].dropna().unique()) if "Proyecto" in df_cluster.columns else []
+tipos_ruta = sorted(df_cluster["TipoRuta"].dropna().unique()) if "TipoRuta" in df_cluster.columns else []
+tipos_unidad = sorted(df_cluster["TipoUnidad"].dropna().unique()) if "TipoUnidad" in df_cluster.columns else []
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    proyecto_sel = st.selectbox("Proyecto", ["Todos"] + proyectos)
+with col2:
+    tipo_ruta_sel = st.selectbox("Tipo de Ruta", ["Todos"] + tipos_ruta)
+with col3:
+    tipo_unidad_sel = st.selectbox("Tipo de Unidad", ["Todos"] + tipos_unidad)
+
+# Filtrado dinámico
+df_sim = df_cluster.copy()
+if proyecto_sel != "Todos":
+    df_sim = df_sim[df_sim["Proyecto"] == proyecto_sel]
+if tipo_ruta_sel != "Todos":
+    df_sim = df_sim[df_sim["TipoRuta"] == tipo_ruta_sel]
+if tipo_unidad_sel != "Todos":
+    df_sim = df_sim[df_sim["TipoUnidad"] == tipo_unidad_sel]
+
+if not df_sim.empty and "CPK" in df_sim.columns:
+    cpk_prom = df_sim["CPK"].mean()
+    st.success(f"CPK estimado para la combinación seleccionada: **{cpk_prom:.2f}**")
+    st.dataframe(df_sim[["Proyecto", "TipoRuta", "TipoUnidad", "CPK"]], use_container_width=True)
+else:
+    st.warning("No hay datos para la combinación seleccionada.")
