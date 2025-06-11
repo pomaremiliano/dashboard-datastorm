@@ -27,8 +27,8 @@ COLOR_MAP = {
     "Mayor": PALETTE[0],
     "Promedio": PALETTE[1],
     "Menor": PALETTE[2],
-    "Top 10": PALETTE[3],
-    "Bottom 10": PALETTE[4],
+    "Top 10": PALETTE[2],
+    "Bottom 10": PALETTE[0],
 }
 
 # --- Subset para unidades ---
