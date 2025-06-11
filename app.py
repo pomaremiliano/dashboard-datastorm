@@ -3,6 +3,11 @@ import pandas as pd
 import plotly.express as px
 import altair as alt
 
+# --- Página general ---
+st.set_page_config(page_title="Dashboard CPK Optimizado", layout="wide")
+st.title("Dashboard CPK TDR")
+st.subheader("DataStorm")
+
 # --- Cargar datos completos solo una vez ---
 df_eficiencia_completa = pd.read_csv("data/eficiencia_completa_por_tracto.csv")
 df_cluster = pd.read_csv("data/df_maestra_cluster.csv")
@@ -12,6 +17,16 @@ df_unidadesxruta = pd.read_csv("data/tabla_unidades_por_ruta.csv")
 df_viajesunidadruta = pd.read_csv("data/viajes_unidad_ruta.csv")
 df_toprutasmes = pd.read_csv("data/top_rutas_mes.csv")
 
+# --- Paleta de colores personalizada ---
+PALETTE = ["#f4bc34", "#04345c", "#c0c04c", "#407c4c", "#44344c"]
+COLOR_MAP = {
+    "Mayor": PALETTE[0],
+    "Promedio": PALETTE[1],
+    "Menor": PALETTE[2],
+    "Top 10": PALETTE[3],
+    "Bottom 10": PALETTE[4],
+}
+
 
 # --- Filtrar datos para top y bottom 10 rutas ---
 
@@ -19,17 +34,10 @@ top10_cpk = df_gastos.copy()
 bottom10_cpk = df_gastos.copy()
 subset_df = pd.concat([top10_cpk, bottom10_cpk])
 
-# --- Página general ---
-st.set_page_config(page_title="Dashboard CPK Optimizado", layout="wide")
-st.title("Dashboard CPK TDR")
-st.subheader("DataStorm")
-
 # --- Métricas generales ---
 st.markdown("### CPK Promedio General")
 
-
 st.metric("CPK Promedio", f"{df_cluster['CPK'].mean():.2f}")
-
 
 # Renombrar columnas y limpiar datos
 df_eficiencia = df_eficiencia_completa.rename(
@@ -58,7 +66,7 @@ ef_stats_long["Eficiencia"] = pd.to_numeric(
 )
 ef_stats_long = ef_stats_long[ef_stats_long["Eficiencia"] > 0]
 
-# Crear gráfica con Plotly
+# Crear gráfica con Plotly usando COLOR_MAP
 fig = px.bar(
     ef_stats_long,
     x="Tipo",
@@ -67,7 +75,7 @@ fig = px.bar(
     facet_col="Unidad",
     barmode="group",
     category_orders={"Tipo": ["Menor", "Promedio", "Mayor"]},
-    color_discrete_map={"Mayor": "#7EA6E0", "Promedio": "#9D9C9C", "Menor": "#000000"},
+    color_discrete_map=COLOR_MAP,
     title="Eficiencia de combustible por Unidad (km/L)",
     labels={"Eficiencia": "km por litro"},
 )
@@ -91,6 +99,7 @@ fig_bar = px.bar(
     barmode="group",
     labels={"value": "Valor", "variable": "Indicador"},
     title="CPK, Litros y Kilómetros Totales - Top vs Bottom 10",
+    color_discrete_sequence=PALETTE,
 )
 st.plotly_chart(fig_bar, use_container_width=True)
 
@@ -187,7 +196,10 @@ fig_rutas = px.bar(
     color="Tipo",
     barmode="group",
     title="Top y Bottom 10 Rutas por CPK",
-    color_discrete_map={"Top 10": "#FF5733", "Bottom 10": "#3498DB"},
+    color_discrete_map={
+        "Top 10": COLOR_MAP["Top 10"],
+        "Bottom 10": COLOR_MAP["Bottom 10"],
+    },
 )
 st.plotly_chart(fig_rutas, use_container_width=True)
 
@@ -203,15 +215,27 @@ if "Mes" in df_toprutasmes.columns and "Cantidad de viajes" in df_toprutasmes.co
 
     # Top 3 rutas por mes
     top3_rutas = (
-        df_toprutasmes.sort_values(["Mes", "Cantidad de viajes"], ascending=[True, False])
+        df_toprutasmes.sort_values(
+            ["Mes", "Cantidad de viajes"], ascending=[True, False]
+        )
         .groupby("Mes")
         .head(3)
     )
 
     # Mapeo de nombre de mes
     meses_es = [
-        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
     ]
     top3_rutas["MesNombre"] = top3_rutas["Mes"].apply(
         lambda x: meses_es[x - 1] if 1 <= x <= 12 else str(x)
@@ -229,11 +253,14 @@ if "Mes" in df_toprutasmes.columns and "Cantidad de viajes" in df_toprutasmes.co
         color="Ruta",
         title="Top 3 Rutas con Más Viajes por Mes",
         labels={"Cantidad de viajes": "Cantidad de Viajes", "MesNombre": "Mes"},
+        color_discrete_sequence=PALETTE,
     )
 
     st.plotly_chart(fig_top3, use_container_width=True)
 else:
-    st.info("No se encontraron las columnas 'Mes' y 'Cantidad de viajes' en el dataframe.")
+    st.info(
+        "No se encontraron las columnas 'Mes' y 'Cantidad de viajes' en el dataframe."
+    )
 
 st.subheader("Viajes por Unidad y Ruta")
 st.dataframe(df_viajesunidadruta, use_container_width=True)
@@ -253,11 +280,10 @@ fig_hist = px.bar(
     y="TotalViajesUnidad",
     title="Top 10 Rutas con Más Viajes por Unidad",
     labels={"Ruta": "Ruta", "TotalViajesUnidad": "Total de Viajes Unidad"},
+    color_discrete_sequence=PALETTE,
 )
 
 st.plotly_chart(fig_hist, use_container_width=True)
 
-
 st.subheader("Unidades por Ruta")
 st.dataframe(df_unidadesxruta, use_container_width=True)
-
