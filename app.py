@@ -41,7 +41,6 @@ tabs = st.tabs(
     [
         "Resumen General",
         "Eficiencia de Combustible",
-        "Unidades Críticas",
         "Rutas Críticas",
         "Rutas por Mes",
         "Unidades por Ruta",
@@ -131,23 +130,9 @@ with tabs[1]:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# TAB 3
-with tabs[2]:
-    st.header("Comparativa de Top y Bottom 10 Unidades (CPK)")
-    st.write("Comparativa directa de las unidades más eficientes y las más costosas.")
-    fig_bar = px.bar(
-        subset_df.sort_values("CPK", ascending=False),
-        x="Unidad",
-        y=["CPK", "Litros", "Kms Totales"],
-        barmode="group",
-        labels={"value": "Valor", "variable": "Indicador"},
-        title="CPK, Litros y Kilómetros Totales - Top vs Bottom 10",
-        color_discrete_sequence=PALETTE,
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
 
 # TAB 4
-with tabs[3]:
+with tabs[2]:
     st.header("Top y Bottom 10 Rutas por CPK")
     st.write(
         "Identificación de las rutas críticas donde se concentran los mayores costos."
@@ -180,7 +165,7 @@ with tabs[3]:
     st.plotly_chart(fig_rutas, use_container_width=True)
 
 # TAB 5
-with tabs[4]:
+with tabs[3]:
     st.header("Top 3 Rutas con Más Viajes por Mes")
     st.write("Distribución mensual de las rutas más frecuentadas.")
     df_toprutasmes = df_toprutasmes.dropna(subset=["Mes", "Ruta", "Cantidad de viajes"])
@@ -227,13 +212,13 @@ with tabs[4]:
     st.dataframe(df_viajesunidadruta, use_container_width=True)
 
 # TAB 7
-with tabs[5]:
+with tabs[4]:
     st.header("Unidades por Ruta")
     st.write("Relación de unidades asignadas por ruta.")
     st.dataframe(df_unidadesxruta, use_container_width=True)
 
 # TAB 8
-with tabs[6]:
+with tabs[5]:
     st.header("Top 10 Rutas Más Eficientes/Ineficientes")
     st.write("Rutas que presentan el mejor desempeño de CPK.")
     st.dataframe(top10rutaseficientes, use_container_width=True)
@@ -243,7 +228,7 @@ with tabs[6]:
     st.dataframe(top10rutasmeneeficientes, use_container_width=True)
 
 # TAB 9
-with tabs[7]:
+with tabs[6]:
     st.header("Simulador de CPK por Combinación Operativa")
     st.write(
         "Permite simular el CPK esperado según la combinación de Proyecto, Tipo de Ruta y Tipo de Unidad."
