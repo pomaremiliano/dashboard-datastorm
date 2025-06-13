@@ -49,11 +49,11 @@ menu = st.sidebar.radio(
     [
         "Calculadora de CPK",
         "Resumen General",
-        "Eficiencia de Combustible",
+        "Desempeño de Combustible",
         "Rutas Críticas",
         "Rutas por Mes",
         "Unidades por Ruta",
-        "Top 10 Rutas Eficientes/Ineficientes"
+        "Top 10 Rutas con Mayor/Menor Desempeño"
     ]
 )
 
@@ -121,11 +121,11 @@ elif menu == "Resumen General":
         )
         st.dataframe(top10_rutas_menor, use_container_width=True)
 
-# --- Eficiencia Combustible ---
-elif menu == "Eficiencia de Combustible":
-    st.header("Eficiencia de Combustible por Unidad")
+# --- Desempeño Combustible ---
+elif menu == "Desempeño de Combustible":
+    st.header("Desempeño de Combustible por Unidad")
     st.divider()
-    st.markdown("Las unidades con mejor eficiencia de combustible contribuyen significativamente a mantener el CPK bajo.")
+    st.markdown("Las unidades con mejor desempeño de combustible contribuyen significativamente a mantener el CPK bajo.")
     df_eficiencia = df_eficiencia_completa.rename(columns={"Tracto": "Unidad",
         "Eficiencia Min (km/l)": "Menor", "Eficiencia Media (km/l)": "Promedio", "Eficiencia Max (km/l)": "Mayor" })
     top10 = df_eficiencia.nlargest(10, "Mayor").copy()
@@ -179,12 +179,12 @@ elif menu == "Unidades por Ruta":
     st.dataframe(df_unidadesxruta, use_container_width=True)
 
 # --- Top 10 Rutas Eficientes/Ineficientes ---
-elif menu == "Top 10 Rutas Eficientes/Ineficientes":
-    st.header("Top 10 Rutas Más Eficientes")
+elif menu == "Top 10 Rutas con Mayor/Menor Desempeño":
+    st.header("Top 10 Rutas con Mayor Desempeño")
     st.divider()
     st.markdown("Rutas que presentan el mejor desempeño de CPK.")
     st.dataframe(top10rutaseficientes, use_container_width=True)
-    st.header("Top 10 Rutas Más Ineficientes")
+    st.header("Top 10 Rutas con Menor Desempeño")
     st.divider()
-    st.markdown("Rutas donde se concentran las mayores oportunidades de optimización.")
+    st.markdown("Rutas con datos inusuales. Estas rutas presentan un costo de combustible en litros por kilómetro recorrido (L/km) inusualmente alto, lo que indica un desempeño menor.")
     st.dataframe(top10rutasmeneeficientes, use_container_width=True)
